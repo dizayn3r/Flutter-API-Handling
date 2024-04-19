@@ -19,6 +19,8 @@ class _RandomUsersState extends State<RandomUsers> {
   bool hasNextPage = false;
   bool hasData = false;
   RandomUserResponse randomUserResponse = RandomUserResponse();
+  int pageNumber = 1;
+  int limit = 20;
 
   @override
   initState() {
@@ -27,9 +29,11 @@ class _RandomUsersState extends State<RandomUsers> {
   }
 
   getUsers() async {
+    Map<String, String> headers = {"Content-Type": "application/json"};
     dynamic response = await BaseClient.get(
-      "https://api.freeapi.app/api/v1",
-      "/public/randomusers?page=1&limit=20",
+      baseUrl: "https://api.freeapi.app/api/v1",
+      endpoint: "/public/randomusers?page=$pageNumber&limit=$limit",
+      headers: headers,
     );
     dynamic userList = jsonDecode(response);
     RandomUserResponse users = RandomUserResponse.fromJson(userList);
@@ -49,27 +53,11 @@ class _RandomUsersState extends State<RandomUsers> {
       appBar: AppBar(
         title: const Text("Random Users"),
       ),
-      body: hasData
-          ? Column(
-              children: [
-                // Pagination
-                Row(
-                  children: [
-                    ElevatedButton(
-                      onPressed: hasPreviousPage ? () {} : null,
-                      child: const Icon(FontAwesomeIcons.arrowLeft),
-                    ),
-                    Expanded(
-                      child: Text("${userData["data"]["page"]}"),
-                    ),
-                    ElevatedButton(
-                      onPressed: hasNextPage ? () {} : null,
-                      child: const Icon(FontAwesomeIcons.arrowRight),
-                    ),
-                  ],
-                ),
-                // UserList
-                Expanded(
+      body: Column(
+        children: [
+          // UserList
+          hasData
+              ? Expanded(
                   child: ListView.builder(
                     padding: const EdgeInsets.all(8.0),
                     itemCount: randomUserResponse.data!.data!.length,
@@ -83,19 +71,84 @@ class _RandomUsersState extends State<RandomUsers> {
                               borderRadius: BorderRadius.circular(40),
                               child: Image.network(user?.picture?.large ?? ""),
                             ),
-                            title: Text("${user?.name?.first} ${user?.name?.last}"),
-                            trailing: const Icon(Icons.arrow_forward_ios_rounded),
+                            title: Text(
+                              "${user?.name?.first} ${user?.name?.last}",
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            subtitle: Text("${user?.email}"),
+                            trailing:
+                                const Icon(Icons.arrow_forward_ios_rounded),
                           ),
                         ),
                       );
                     },
                   ),
+                )
+              : const Expanded(
+                  child: Center(
+                    child: CircularProgressIndicator(),
+                  ),
                 ),
-              ],
-            )
-          : const Center(
-              child: CircularProgressIndicator(),
+          // Pagination
+          Visibility(
+            visible: userData.isNotEmpty,
+            child: Container(
+              margin: const EdgeInsets.all(16.0),
+              child: Row(
+                children: [
+                  ElevatedButton(
+                    onPressed: hasPreviousPage
+                        ? () {
+                            hasData = !hasData;
+                            setState(() {
+                              pageNumber -= 1;
+                            });
+                            getUsers();
+                          }
+                        : null,
+                    style: ElevatedButton.styleFrom(
+                      fixedSize: const Size(40, 40),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(4.0),
+                      ),
+                    ),
+                    child: const Icon(FontAwesomeIcons.arrowLeft),
+                  ),
+                  Expanded(
+                    child: Center(
+                      child: Text(
+                        userData.isNotEmpty
+                            ? "Page ${userData["data"]["page"]} of ${userData["data"]["totalPages"]}"
+                            : "--",
+                      ),
+                    ),
+                  ),
+                  ElevatedButton(
+                    onPressed: hasNextPage
+                        ? () {
+                            hasData = !hasData;
+                            setState(() {
+                              pageNumber += 1;
+                            });
+                            getUsers();
+                          }
+                        : null,
+                    style: ElevatedButton.styleFrom(
+                      fixedSize: const Size(40, 40),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(4.0),
+                      ),
+                    ),
+                    child: const Icon(FontAwesomeIcons.arrowRight),
+                  ),
+                ],
+              ),
             ),
+          ),
+        ],
+      ),
     );
   }
 }
