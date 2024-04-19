@@ -29,7 +29,7 @@ class _RandomUsersState extends State<RandomUsers> {
   getUsers() async {
     dynamic response = await BaseClient.get(
       "https://api.freeapi.app/api/v1",
-      "/public/randomusers?page=1&limit=5",
+      "/public/randomusers?page=1&limit=20",
     );
     dynamic userList = jsonDecode(response);
     RandomUserResponse users = RandomUserResponse.fromJson(userList);
@@ -71,11 +71,22 @@ class _RandomUsersState extends State<RandomUsers> {
                 // UserList
                 Expanded(
                   child: ListView.builder(
-                    itemCount: randomUserResponse.data?.data?.length,
+                    padding: const EdgeInsets.all(8.0),
+                    itemCount: randomUserResponse.data!.data!.length,
                     itemBuilder: (context, index) {
                       User? user = randomUserResponse.data!.data?[index];
-                      return ListTile(
-                        title: Text(user?.name?.first ?? ""),
+                      return Card(
+                        child: Padding(
+                          padding: const EdgeInsets.all(8.0),
+                          child: ListTile(
+                            leading: ClipRRect(
+                              borderRadius: BorderRadius.circular(40),
+                              child: Image.network(user?.picture?.large ?? ""),
+                            ),
+                            title: Text("${user?.name?.first} ${user?.name?.last}"),
+                            trailing: const Icon(Icons.arrow_forward_ios_rounded),
+                          ),
+                        ),
                       );
                     },
                   ),
