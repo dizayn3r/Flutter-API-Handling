@@ -43,8 +43,8 @@ class Data {
   int? page;
   int? limit;
   int? totalPages;
-  bool? previousPage;
-  bool? nextPage;
+  bool previousPage;
+  bool nextPage;
   int? totalItems;
   int? currentPageItems;
   List<User>? data;
@@ -53,8 +53,8 @@ class Data {
     this.page,
     this.limit,
     this.totalPages,
-    this.previousPage,
-    this.nextPage,
+    this.previousPage = false,
+    this.nextPage = false,
     this.totalItems,
     this.currentPageItems,
     this.data,

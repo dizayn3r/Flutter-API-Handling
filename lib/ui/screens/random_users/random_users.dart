@@ -1,10 +1,7 @@
-import 'dart:convert';
-import 'dart:developer';
-
-import 'package:api_handling/model/random_user.dart';
-import 'package:api_handling/services/base_client.dart';
+import 'package:api_handling/enum/notifier_state.dart';
+import 'package:api_handling/providers/user_provider.dart';
 import 'package:flutter/material.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:provider/provider.dart';
 
 class RandomUsers extends StatefulWidget {
   const RandomUsers({super.key});
@@ -14,37 +11,36 @@ class RandomUsers extends StatefulWidget {
 }
 
 class _RandomUsersState extends State<RandomUsers> {
-  Map<String, dynamic> userData = {};
-  bool hasPreviousPage = false;
-  bool hasNextPage = false;
-  bool hasData = false;
-  RandomUserResponse randomUserResponse = RandomUserResponse();
   int pageNumber = 1;
   int limit = 20;
 
   @override
   initState() {
-    getUsers();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      getUsers();
+    });
     super.initState();
   }
 
   getUsers() async {
-    Map<String, String> headers = {"Content-Type": "application/json"};
-    dynamic response = await BaseClient.get(
-      baseUrl: "https://api.freeapi.app/api/v1",
-      endpoint: "/public/randomusers?page=$pageNumber&limit=$limit",
-      headers: headers,
-    );
-    dynamic userList = jsonDecode(response);
-    RandomUserResponse users = RandomUserResponse.fromJson(userList);
+    final userProvider = Provider.of<UserProvider>(context, listen: false);
+    await userProvider.fetchUsers(pageNumber, limit);
+  }
+
+  void nextPage() {
     setState(() {
-      hasData = !hasData;
-      randomUserResponse = users;
-      userData = userList;
-      hasPreviousPage = userList["data"]["previousPage"];
-      hasNextPage = userList["data"]["nextPage"];
+      pageNumber++;
     });
-    log("Response: ${users.toJson()}");
+    getUsers();
+  }
+
+  void previousPage() {
+    setState(() {
+      if (pageNumber > 1) {
+        pageNumber--;
+      }
+    });
+    getUsers();
   }
 
   @override
@@ -53,101 +49,74 @@ class _RandomUsersState extends State<RandomUsers> {
       appBar: AppBar(
         title: const Text("Random Users"),
       ),
-      body: Column(
-        children: [
-          // UserList
-          hasData
-              ? Expanded(
-                  child: ListView.builder(
-                    padding: const EdgeInsets.all(8.0),
-                    itemCount: randomUserResponse.data!.data!.length,
-                    itemBuilder: (context, index) {
-                      User? user = randomUserResponse.data!.data?[index];
-                      return Card(
-                        child: Padding(
-                          padding: const EdgeInsets.all(8.0),
-                          child: ListTile(
-                            leading: ClipRRect(
-                              borderRadius: BorderRadius.circular(40),
-                              child: Image.network(user?.picture?.large ?? ""),
-                            ),
-                            title: Text(
-                              "${user?.name?.first} ${user?.name?.last}",
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            subtitle: Text("${user?.email}"),
-                            trailing:
-                                const Icon(Icons.arrow_forward_ios_rounded),
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                )
-              : const Expanded(
-                  child: Center(
-                    child: CircularProgressIndicator(),
-                  ),
-                ),
-          // Pagination
-          Visibility(
-            visible: userData.isNotEmpty,
-            child: Container(
-              margin: const EdgeInsets.all(16.0),
-              child: Row(
+      body: Consumer<UserProvider>(
+        builder: (context, provider, child) {
+          if (provider.state == NotifierState.initial) {
+            return Text("NotifierState: ${provider.state}");
+          } else if (provider.state == NotifierState.loading) {
+            return const Center(child: CircularProgressIndicator());
+          } else {
+            if (provider.failure != null) {
+              return Text(provider.failure.toString());
+            } else {
+              return Column(
                 children: [
-                  ElevatedButton(
-                    onPressed: hasPreviousPage
-                        ? () {
-                            hasData = !hasData;
-                            setState(() {
-                              pageNumber -= 1;
-                            });
-                            getUsers();
-                          }
-                        : null,
-                    style: ElevatedButton.styleFrom(
-                      fixedSize: const Size(40, 40),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(4.0),
-                      ),
-                    ),
-                    child: const Icon(FontAwesomeIcons.arrowLeft),
-                  ),
                   Expanded(
-                    child: Center(
-                      child: Text(
-                        userData.isNotEmpty
-                            ? "Page ${userData["data"]["page"]} of ${userData["data"]["totalPages"]}"
-                            : "--",
-                      ),
+                    child: ListView.builder(
+                      padding: const EdgeInsets.all(8.0),
+                      itemCount: provider.userResponse.data?.data?.length,
+                      itemBuilder: (context, index) {
+                        final user = provider.userResponse.data?.data?[index];
+                        return Card(
+                          child: Padding(
+                            padding: const EdgeInsets.all(8.0),
+                            child: ListTile(
+                              leading: CircleAvatar(
+                                backgroundImage:
+                                    NetworkImage(user!.picture!.large ?? ""),
+                              ),
+                              title: Text(
+                                "${user.name?.first} ${user.name?.last}",
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              subtitle: Text("${user.email}"),
+                            ),
+                          ),
+                        );
+                      },
                     ),
                   ),
-                  ElevatedButton(
-                    onPressed: hasNextPage
-                        ? () {
-                            hasData = !hasData;
-                            setState(() {
-                              pageNumber += 1;
-                            });
-                            getUsers();
-                          }
-                        : null,
-                    style: ElevatedButton.styleFrom(
-                      fixedSize: const Size(40, 40),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(4.0),
-                      ),
+                  Container(
+                    margin: const EdgeInsets.all(16.0),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        ElevatedButton(
+                          onPressed: provider.userResponse.data!.previousPage
+                              ? previousPage
+                              : null,
+                          child: const Text('Previous'),
+                        ),
+                        Text(
+                          "Page ${provider.userResponse.data!.page} of ${provider.userResponse.data!.totalPages}",
+                          style: const TextStyle(fontSize: 18),
+                        ),
+                        ElevatedButton(
+                          onPressed: provider.userResponse.data!.nextPage
+                              ? nextPage
+                              : null,
+                          child: const Text('Next'),
+                        ),
+                      ],
                     ),
-                    child: const Icon(FontAwesomeIcons.arrowRight),
-                  ),
+                  )
                 ],
-              ),
-            ),
-          ),
-        ],
+              );
+            }
+          }
+        },
       ),
     );
   }

@@ -1,15 +1,15 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:developer';
 import 'dart:io';
 
-import 'package:api_handling/services/app_exceptions.dart';
 import 'package:http/http.dart' as http;
 
 class BaseClient {
   static const int timeOutDuration = 20;
 
   // GET
-  static Future<dynamic> get({
+  Future<dynamic> get({
     required String baseUrl,
     required String endpoint,
     required Map<String, String> headers,
@@ -21,12 +21,18 @@ class BaseClient {
           );
       return _processResponse(response);
     } on SocketException {
-      throw FetchDataException(
+      log("Socket Exception");
+      throw Failure(
         "No Internet connection",
         uri.toString(),
       );
+    } on FormatException {
+      throw Failure(
+        "Request body is not correct",
+        uri.toString(),
+      );
     } on TimeoutException {
-      throw ApiNotRespondingException(
+      throw Failure(
         "API not responded in time",
         uri.toString(),
       );
@@ -34,24 +40,29 @@ class BaseClient {
   }
 
   // POST
-  static Future<dynamic> post({
+  Future<dynamic> post({
     required String baseUrl,
     required String endpoint,
     required Map<String, String> headers,
+    required Map<String, dynamic> payload,
   }) async {
     Uri uri = Uri.parse(baseUrl + endpoint);
     try {
-      http.Response response = await http.post(uri, headers: headers).timeout(
-            const Duration(seconds: timeOutDuration),
-          );
+      http.Response response = await http
+          .post(
+            uri,
+            headers: headers,
+            body: json.encode(payload),
+          )
+          .timeout(const Duration(seconds: timeOutDuration));
       return _processResponse(response);
     } on SocketException {
-      throw FetchDataException(
+      throw Failure(
         "No Internet connection",
         uri.toString(),
       );
     } on TimeoutException {
-      throw ApiNotRespondingException(
+      throw Failure(
         "API not responded in time",
         uri.toString(),
       );
@@ -64,22 +75,31 @@ class BaseClient {
         dynamic jsonResponse = utf8.decode(response.bodyBytes);
         return jsonResponse;
       case 400:
-        BadRequestException(
+        Failure(
           utf8.decode(response.bodyBytes),
           response.request!.url.toString(),
         );
       case 401:
       case 403:
-        throw UnauthorizedException(
+        throw Failure(
           utf8.decode(response.bodyBytes),
           response.request!.url.toString(),
         );
       case 500:
       default:
-        FetchDataException(
+        Failure(
           'Error occurred with code: ${response.statusCode}',
           response.request!.url.toString(),
         );
     }
   }
+}
+
+class Failure {
+  final String message;
+  final String url;
+  Failure(this.message, this.url);
+
+  @override
+  String toString() => message;
 }

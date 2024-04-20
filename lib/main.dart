@@ -1,4 +1,6 @@
+import 'package:api_handling/providers/user_provider.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import 'ui/screens/home/home.dart';
 
@@ -11,16 +13,23 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Flutter API Handling',
-      theme: ThemeData(
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => UserProvider()),
+      ],
+      child: MaterialApp(
+        title: 'Flutter API Handling',
+        debugShowCheckedModeBanner: false,
+        theme: ThemeData(
           colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
           useMaterial3: true,
           appBarTheme: AppBarTheme(
             color: Theme.of(context).colorScheme.inversePrimary,
             centerTitle: true,
-          )),
-      home: const Home(),
+          ),
+        ),
+        home: const Home(),
+      ),
     );
   }
 }
