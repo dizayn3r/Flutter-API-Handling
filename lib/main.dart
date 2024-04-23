@@ -1,4 +1,5 @@
 import 'package:api_handling/providers/user_provider.dart';
+import 'package:api_handling/ui/screens/internet_checker.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -28,7 +29,7 @@ class MyApp extends StatelessWidget {
             centerTitle: true,
           ),
         ),
-        home: const Home(),
+        home: const InternetChecker(child: Home()),
       ),
     );
   }

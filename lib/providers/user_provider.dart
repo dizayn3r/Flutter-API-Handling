@@ -1,11 +1,13 @@
+import 'dart:developer';
+
+import 'package:api_handling/data/network/random_users_data_source.dart';
 import 'package:api_handling/enum/notifier_state.dart';
 import 'package:api_handling/model/random_user.dart';
 import 'package:api_handling/services/base_client.dart';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 
 class UserProvider extends ChangeNotifier {
-  final _baseClient = BaseClient();
-
   NotifierState _state = NotifierState.initial;
   NotifierState get state => _state;
 
@@ -32,14 +34,13 @@ class UserProvider extends ChangeNotifier {
 
   fetchUsers(int pageNumber, int limit) async {
     _setState(NotifierState.loading);
-    Map<String, String> headers = {"Content-Type": "application/json"};
     try {
-      dynamic response = await _baseClient.get(
-        baseUrl: "https://api.freeapi.app/api/v1",
-        endpoint: "/public/randomusers?page=$pageNumber&limit=$limit",
-        headers: headers,
-      );
-      _setUserResponse(randomUserResponseFromJson(response));
+      http.Response response =
+          await RandomUsersDataSource.fetchRandomUsers(pageNumber, limit);
+      log("Response: ${response.statusCode}");
+      if (response.statusCode == 200) {
+        _setUserResponse(randomUserResponseFromJson(response.body));
+      }
     } on Failure catch (f) {
       _setFailure(f);
     }
