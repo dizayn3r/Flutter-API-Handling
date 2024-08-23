@@ -19,8 +19,17 @@ class UserProvider extends ChangeNotifier {
   RandomUserResponse _userResponse = RandomUserResponse();
   RandomUserResponse get userResponse => _userResponse;
 
+  List<User> _users = [];
+  List<User> get users => _users;
+
   void _setUserResponse(RandomUserResponse value) {
     _userResponse = value;
+    setUsers(value.data?.data ?? []);
+    notifyListeners();
+  }
+
+  setUsers(List<User> value) {
+    _users = [...users, ...value];
     notifyListeners();
   }
 
